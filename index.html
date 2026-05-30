@@ -170,6 +170,9 @@ main { padding: 14px 20px; }
 .visit-date-past { color: var(--text3); }
 .visit-range { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
 .visit-drugs { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.visit-nodrug-label { font-size: 11px; color: var(--accent); margin-top: 4px; font-style: italic; }
+.visit-assess { font-size: 10px; color: var(--text3); margin-top: 5px; line-height: 1.5; border-left: 2px solid var(--border); padding-left: 7px; }
+.visit-nodrug { background: rgba(91,143,255,0.03); }
 .edit-inline { display: flex; align-items: center; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
 
 /* ---- SCAN ROWS ---- */
@@ -315,6 +318,7 @@ select option { background: var(--bg2); }
   <button class="tab active" onclick="setFilter('all')" id="tab-all">Tutte</button>
   <button class="tab" onclick="setFilter('MK2870')" id="tab-MK2870">MK-2870-036</button>
   <button class="tab" onclick="setFilter('DS6000')" id="tab-DS6000">DS6000-109</button>
+  <button class="tab" onclick="setFilter('DESTINY')" id="tab-DESTINY">DESTINY-E01</button>
 </div>
 
 <!-- MAIN -->
@@ -332,6 +336,10 @@ select option { background: var(--bg2); }
       DS6000-109
       <div class="study-sub">R-DXd vs Investigator's Choice · Phase 3</div>
     </button>
+    <button class="study-btn" onclick="openModal('DESTINY')">
+      DESTINY-E01
+      <div class="study-sub">T-DXd + Rilvegostomig / Pembrolizumab vs Carboplatino + Paclitaxel · Phase 3</div>
+    </button>
     <button class="btn-secondary" style="width:100%;margin-top:4px;" onclick="hideStudySelector()">Annulla</button>
   </div>
 </div>
@@ -346,8 +354,8 @@ select option { background: var(--bg2); }
         <label>Codice paziente</label>
         <input type="text" id="new-id" placeholder="es. IT-001">
       </div>
-      <div class="form-group">
-        <label>Data C1D1</label>
+      <div class="form-group" id="c1d1-group">
+        <label>Data C1D1 <span style="font-size:10px;color:var(--text3);">(opzionale — inserire dopo randomizzazione)</span></label>
         <input type="date" id="new-c1d1">
       </div>
     </div>
@@ -386,12 +394,15 @@ function load() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } ca
 function save(p) { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch(e) {} }
 
 let patients = load();
+// Migrate: ensure all patients have status field
+patients.forEach(p=>{if(!p.status)p.status=p.c1d1?'active':'screening';if(!p.scrDates)p.scrDates={};});
+save(patients);
 let selPt = null, detView = 'visits', editV = null, filter = 'all';
 let modalStudy = null;
 
 // Seed demo
 if (!patients.find(p=>p.id==='IT-001'&&p.study==='MK2870')) {
-  patients.push({ id:'IT-001', study:'MK2870', part:'part1', sub:null, beva:'yes', c1d1:'2026-04-27', overrides:{'C1D29':'2026-05-28','C2D1':'2026-06-11'}, ctActual:{}, scrChecklist:{} });
+  patients.push({ id:'IT-001', study:'MK2870', part:'part1', sub:null, beva:'yes', c1d1:'2026-04-27', status:'active', overrides:{'C1D29':'2026-05-28','C2D1':'2026-06-11'}, ctActual:{}, scrChecklist:{}, scrDates:{}, randomizationOutcome:null });
   save(patients);
 }
 
@@ -407,30 +418,34 @@ function soon(ds){const d=diff(td(),ds);return d>=0&&d<=14;}
 function genMK2870(p){
   const {part,beva,c1d1,overrides={}}=p; const visits=[];
   function res(k,base){return overrides[k]||base;}
+  const aD1='Segni vitali · peso · esame obiettivo · emocromo · chimica · test gravidanza · farmaco';
+  const aD15='Segni vitali · emocromo · farmaco';
+  const aD22='Segni vitali · farmaco (Beva)';
+  const aD29='Segni vitali · emocromo · farmaco';
   if(part==='part1'||part==='part2_arm_a'){
     let pD1=c1d1;
     for(let c=1;c<=14;c++){
       const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,42)); pD1=cD1;
       const d1d=['Sac-TMT','Pembrolizumab']; if(beva==='yes')d1d.push('Bevacizumab');
-      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:d1d,window:3});
-      visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:['Sac-TMT'],window:3});
-      if(beva==='yes') visits.push({key:`C${c}D22`,cycle:c,day:22,date:res(`C${c}D22`,addDays(cD1,21)),drugs:['Bevacizumab'],window:3});
-      visits.push({key:`C${c}D29`,cycle:c,day:29,date:res(`C${c}D29`,addDays(cD1,28)),drugs:['Sac-TMT'],window:3});
+      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:d1d,window:3,assess:aD1});
+      visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:['Sac-TMT'],window:3,assess:aD15});
+      if(beva==='yes') visits.push({key:`C${c}D22`,cycle:c,day:22,date:res(`C${c}D22`,addDays(cD1,21)),drugs:['Bevacizumab'],window:3,assess:aD22});
+      visits.push({key:`C${c}D29`,cycle:c,day:29,date:res(`C${c}D29`,addDays(cD1,28)),drugs:['Sac-TMT'],window:3,assess:aD29});
     }
   } else if(part==='part2_induction'){
     for(let c=1;c<=6;c++){
       const k=`C${c}D1`, date=res(k,addDays(c1d1,(c-1)*21));
       const dr=['Pembrolizumab','Paclitaxel','Cisplatin/Carboplatino'];
       if(beva==='yes')dr.push('Bevacizumab');
-      visits.push({key:k,cycle:c,day:1,date,drugs:dr,window:3});
+      visits.push({key:k,cycle:c,day:1,date,drugs:dr,window:3,assess:aD1});
     }
   } else if(part==='part2_arm_b'){
     let pD1=c1d1;
     for(let c=1;c<=14;c++){
       const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,42)); pD1=cD1;
       const d1d=['Pembrolizumab']; if(beva==='yes')d1d.push('Bevacizumab');
-      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:d1d,window:3});
-      if(beva==='yes') visits.push({key:`C${c}D22`,cycle:c,day:22,date:res(`C${c}D22`,addDays(cD1,21)),drugs:['Bevacizumab'],window:3});
+      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:d1d,window:3,assess:aD1});
+      if(beva==='yes') visits.push({key:`C${c}D22`,cycle:c,day:22,date:res(`C${c}D22`,addDays(cD1,21)),drugs:['Bevacizumab'],window:3,assess:aD22});
     }
   }
   const ctScans=genMKScans(c1d1,part,overrides);
@@ -451,39 +466,68 @@ function genMKScans(c1d1,part,ov={}){
 function genDS6000(p){
   const {part,sub,c1d1,overrides={}}=p; const visits=[];
   function res(k,base){return overrides[k]||base;}
+
+  // Assessment summaries per tipo di giorno
+  const assessD1 = 'Segni vitali · peso · ECOG · esame obiettivo · emocromo · chimica · CA-125 · test gravidanza · farmaco';
+  const assessD1ecg = 'Segni vitali · peso · ECOG · esame obiettivo · emocromo · chimica · CA-125 · test gravidanza · ECG · farmaco';
+  const assessD8 = 'Segni vitali · emocromo · chimica · PRO questionnaires';
+  const assessD15 = 'Segni vitali · emocromo · chimica · visita oculistica (se indicato) · PRO questionnaires';
+  const assessD22_pac = 'Segni vitali · emocromo · chimica · farmaco';
+
   if(part==='experimental'){
     let pD1=c1d1;
     for(let c=1;c<=20;c++){
       const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,21)); pD1=cD1;
-      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['R-DXd 5.6 mg/kg IV'],window:3});
+      // ECG ogni 4 cicli da C5 (C5,C9,C13...)
+      const hasECG = c>=5 && (c-5)%4===0;
+      const assess = hasECG ? assessD1ecg : assessD1;
+      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['R-DXd 5.6 mg/kg IV'],window:3,assess});
+      // D8 e D15 solo C1 e C2 (visite senza terapia)
+      if(c<=2){
+        visits.push({key:`C${c}D8`,cycle:c,day:8,date:res(`C${c}D8`,addDays(cD1,7)),drugs:[],window:1,assess:assessD8});
+        visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:[],window:1,assess:assessD15});
+      }
     }
   } else if(part==='comparator'){
     if(sub==='paclitaxel'){
       let pD1=c1d1;
       for(let c=1;c<=16;c++){
         const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,28)); pD1=cD1;
-        visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['Paclitaxel 80mg/m²'],window:3});
-        visits.push({key:`C${c}D8`,cycle:c,day:8,date:res(`C${c}D8`,addDays(cD1,7)),drugs:['Paclitaxel 80mg/m²'],window:3});
-        visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:['Paclitaxel 80mg/m²'],window:3});
-        visits.push({key:`C${c}D22`,cycle:c,day:22,date:res(`C${c}D22`,addDays(cD1,21)),drugs:['Paclitaxel 80mg/m²'],window:3});
+        const hasECG = c>=5 && (c-5)%4===0;
+        visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['Paclitaxel 80mg/m²'],window:3,assess:hasECG?assessD1ecg:assessD1});
+        // D8 e D15: terapia solo a C1/C2 si usa come visita intermedia per tutti i cicli ma farmaco sempre
+        visits.push({key:`C${c}D8`,cycle:c,day:8,date:res(`C${c}D8`,addDays(cD1,7)),drugs:['Paclitaxel 80mg/m²'],window:1,assess:c<=2?assessD8:'Segni vitali · farmaco'});
+        visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:['Paclitaxel 80mg/m²'],window:1,assess:c<=2?assessD15:'Segni vitali · farmaco'});
+        visits.push({key:`C${c}D22`,cycle:c,day:22,date:res(`C${c}D22`,addDays(cD1,21)),drugs:['Paclitaxel 80mg/m²'],window:1,assess:assessD22_pac});
       }
     } else if(sub==='topotecan'){
       let pD1=c1d1;
       for(let c=1;c<=16;c++){
         const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,28)); pD1=cD1;
-        visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['Topotecan 4mg/m²'],window:3});
-        visits.push({key:`C${c}D8`,cycle:c,day:8,date:res(`C${c}D8`,addDays(cD1,7)),drugs:['Topotecan 4mg/m²'],window:3});
-        visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:['Topotecan 4mg/m²'],window:3});
+        const hasECG = c>=5 && (c-5)%4===0;
+        visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['Topotecan 4mg/m²'],window:3,assess:hasECG?assessD1ecg:assessD1});
+        visits.push({key:`C${c}D8`,cycle:c,day:8,date:res(`C${c}D8`,addDays(cD1,7)),drugs:['Topotecan 4mg/m²'],window:1,assess:c<=2?assessD8:'Segni vitali · farmaco'});
+        visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:['Topotecan 4mg/m²'],window:1,assess:c<=2?assessD15:'Segni vitali · farmaco'});
       }
     } else if(sub==='pld'){
       let pD1=c1d1;
       for(let c=1;c<=16;c++){
         const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,28)); pD1=cD1;
-        visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['PLD 50mg/m²'],window:3});
+        const hasECG = c>=5 && (c-5)%4===0;
+        const hasEcho = c>=5 && (c-5)%4===0;
+        let assess = hasECG ? assessD1ecg : assessD1;
+        if(hasEcho) assess += ' · Ecocardio';
+        visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['PLD 50mg/m²'],window:3,assess});
+        // D8 e D15 solo C1 e C2 (visite senza terapia)
+        if(c<=2){
+          visits.push({key:`C${c}D8`,cycle:c,day:8,date:res(`C${c}D8`,addDays(cD1,7)),drugs:[],window:1,assess:assessD8});
+          visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:[],window:1,assess:assessD15});
+        }
       }
     }
   }
   const ctScans=genDS6000Scans(c1d1,overrides);
+  // Per PLD ecocardio separato nella sezione TC/Eco
   const echoVisits=sub==='pld'
     ? visits.filter(v=>v.day===1&&v.cycle>=5&&(v.cycle-5)%4===0).map(v=>({key:`ECHO-${v.key}`,label:`Ecocardio ${v.key}`,date:v.date,window:7}))
     : [];
@@ -495,6 +539,117 @@ function genDS6000Scans(c1d1,ov={}){
   let w=60; for(let i=0;i<10;i++){const k=`TC-W${w}`;s.push({key:k,label:`TC sett. ${w}`,date:ov[k]||addDays(c1d1,w*7),window:7});w+=12;}
   return s;
 }
+
+// ===================== MK2870 PART 2 SCREENING ITEMS =====================
+const MK2870_SCR_ITEMS=[
+  {key:'ic',label:'Consenso informato firmato'},
+  {key:'pdl1_trop2',label:'Campione tumorale per PD-L1 e TROP2 (richiesto centralmente)'},
+  {key:'beva_choice',label:"Scelta dell'investigatore su bevacizumab (sì/no) + motivazione"},
+  {key:'eligibility',label:'Criteri inclusione/esclusione verificati'},
+  {key:'anamnesi',label:'Anamnesi completa + storia oncologica + terapie pregresse'},
+  {key:'obiettivo',label:'Esame obiettivo completo (entro 7gg da allocazione)'},
+  {key:'altezza',label:'Altezza'},
+  {key:'peso',label:'Peso'},
+  {key:'vitals',label:'Segni vitali (PA, FC, FR, temperatura)'},
+  {key:'ecog',label:'ECOG Performance Status (entro 7gg da allocazione)'},
+  {key:'ecg',label:'ECG 12 derivazioni'},
+  {key:'ematologia',label:'Ematologia e chimica (entro 7gg da allocazione)'},
+  {key:'urine',label:'Urinanalisi (entro 7gg da allocazione)'},
+  {key:'egfr',label:'eGFR'},
+  {key:'tft',label:'Funzionalità tiroidea (TSH, T3, FT4) (entro 7gg da allocazione)'},
+  {key:'hbv_hcv_hiv',label:'HBV, HCV, HIV (per protocollo locale)'},
+  {key:'gravidanza',label:'Test gravidanza negativo (urine entro 24h o siero entro 72h da C1D1)'},
+  {key:'tc_baseline',label:'TC/MRI baseline (torace, addome, pelvi) — entro 28gg da C1D1'},
+];
+
+// ===================== DESTINY-E01 SCHEDULE =====================
+function genDESTINY(p){
+  const {part,c1d1,overrides={}}=p; const visits=[];
+  function res(k,base){return overrides[k]||base;}
+  const aD1_ab='Segni vitali · SpO2 · peso · ECOG · esame obiettivo · lab completi · CA-125 · TSH/FT4 · troponina · test gravidanza · ECG (C1,C5,C9…) · ECHO (C5,C9…) · farmaco';
+  const aD1_c='Segni vitali · SpO2 · peso · ECOG · esame obiettivo · lab completi · CA-125 · TSH/FT4 · troponina · test gravidanza · ECG (C1,C5,C9…) · ECHO (C5,C9…) · farmaco';
+  const aD8='Segni vitali · SpO2 · lab completi (solo C1)';
+  const aD15='Segni vitali · SpO2 · lab completi (solo C1)';
+
+  if(part==='arm_a'||part==='arm_b'){
+    const drugs_a=['T-DXd 5.4 mg/kg', part==='arm_a'?'Rilvegostomig 750 mg':'Pembrolizumab 200 mg'];
+    let pD1=c1d1;
+    for(let c=1;c<=30;c++){
+      const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,21)); pD1=cD1;
+      const hasECG=c===1||(c>=5&&(c-5)%4===0);
+      const hasEcho=c>=5&&(c-5)%4===0;
+      let assess=aD1_ab;
+      if(hasECG&&!hasEcho) assess='Segni vitali · SpO2 · peso · ECOG · lab completi · CA-125 · TSH/FT4 · troponina · ECG · farmaco';
+      if(hasECG&&hasEcho) assess='Segni vitali · SpO2 · peso · ECOG · lab completi · CA-125 · TSH/FT4 · troponina · ECG · Ecocardio · farmaco';
+      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:drugs_a,window:2,assess});
+      // D8 e D15 solo C1
+      if(c===1){
+        visits.push({key:'C1D8',cycle:1,day:8,date:res('C1D8',addDays(cD1,7)),drugs:[],window:1,assess:aD8});
+        visits.push({key:'C1D15',cycle:1,day:15,date:res('C1D15',addDays(cD1,14)),drugs:[],window:1,assess:aD15});
+      }
+    }
+  } else if(part==='arm_c'){
+    let pD1=c1d1;
+    // Fase combinata: C1-C6, Q3W, carboplatino + paclitaxel + pembrolizumab 200mg
+    for(let c=1;c<=6;c++){
+      const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,21)); pD1=cD1;
+      const hasECG=c===1||(c>=5&&(c-5)%4===0);
+      const hasEcho=c>=5&&(c-5)%4===0;
+      let baseAssess='Segni vitali · SpO2 · peso · ECOG · lab completi · CA-125 · TSH/FT4 · troponina · test gravidanza · farmaco';
+      if(hasECG) baseAssess+=' · ECG';
+      if(hasEcho) baseAssess+=' · Ecocardio';
+      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['Carboplatino AUC5','Paclitaxel 175mg/m²','Pembrolizumab 200mg'],window:2,assess:baseAssess});
+      if(c===1){
+        visits.push({key:'C1D8',cycle:1,day:8,date:res('C1D8',addDays(cD1,7)),drugs:[],window:1,assess:aD8});
+        visits.push({key:'C1D15',cycle:1,day:15,date:res('C1D15',addDays(cD1,14)),drugs:[],window:1,assess:aD15});
+      }
+    }
+    // Fase mantenimento: C7-C20, Q6W, pembrolizumab 400mg (max 20 cicli totali pembrolizumab)
+    // C7 parte 6 settimane dopo C6D1
+    const c6D1=pD1;
+    for(let c=7;c<=20;c++){
+      const k=`C${c}D1`, cD1=c===7?res(k,addDays(c6D1,42)):res(k,addDays(pD1,42)); pD1=cD1;
+      const hasECG=(c>=5&&(c-5)%4===0)||(c>=7&&(c-7)%4===0);
+      const hasEcho=hasECG;
+      let baseAssess='Segni vitali · SpO2 · peso · ECOG · lab completi · CA-125 · TSH/FT4 · troponina · test gravidanza · farmaco';
+      if(hasECG) baseAssess+=' · ECG';
+      if(hasEcho) baseAssess+=' · Ecocardio';
+      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['Pembrolizumab 400mg (mantenimento)'],window:2,assess:baseAssess});
+    }
+  }
+
+  const ctScans=genDESTINYScans(c1d1,overrides);
+  return {visits,ctScans,echoVisits:[]};
+}
+
+function genDESTINYScans(c1d1,ov={}){
+  const s=[];
+  // Q9W fino a sett 54, poi Q12W
+  for(let w=9;w<=54;w+=9){const k=`TC-W${w}`;s.push({key:k,label:`TC sett. ${w}`,date:ov[k]||addDays(c1d1,w*7),window:7});}
+  let w=66; for(let i=0;i<10;i++){const k=`TC-W${w}`;s.push({key:k,label:`TC sett. ${w}`,date:ov[k]||addDays(c1d1,w*7),window:7});w+=12;}
+  return s;
+}
+
+const DESTINY_SCR_ITEMS=[
+  {key:'ic',label:'Consenso informato firmato (pre-screening + main)'},
+  {key:'her2_pdl1',label:'Campione tumorale FFPE per HER2 / PD-L1 / MMR (obbligatorio)'},
+  {key:'eligibility',label:'Verifica criteri di inclusione/esclusione'},
+  {key:'anamnesi',label:'Anamnesi completa + storia terapie antitumorali'},
+  {key:'obiettivo',label:'Esame obiettivo completo'},
+  {key:'ecog',label:'WHO/ECOG Performance Status'},
+  {key:'vitals',label:'Segni vitali + SpO2 + peso + altezza'},
+  {key:'ecg',label:'ECG 12 derivazioni (triplice)'},
+  {key:'echo',label:'Ecocardio / MUGA scan (LVEF)'},
+  {key:'oculistica',label:'Visita oculistica (acuità visiva, slit lamp, fundoscopia)'},
+  {key:'lab',label:'Lab completi (emocromo, chimica, coagulazione, urine, TFTs)'},
+  {key:'troponina',label:'Troponina'},
+  {key:'ca125',label:'CA-125'},
+  {key:'tsh',label:'TSH e Free T4'},
+  {key:'hbv_hcv',label:'Sierologia HBV/HCV'},
+  {key:'hiv',label:'HIV (se richiesto da normativa locale)'},
+  {key:'gravidanza',label:'Test gravidanza'},
+  {key:'tc_baseline',label:'TC baseline (RECIST 1.1) — entro 28gg da C1D1'},
+];
 
 const SCR_ITEMS=[
   {key:'ic',label:'Consenso informato firmato'},
@@ -517,10 +672,13 @@ const SCR_ITEMS=[
   {key:'tc_baseline',label:'TC baseline RECIST 1.1 — entro 28gg da randomizzazione'},
 ];
 
-function getSchedule(p){return p.study==='MK2870'?genMK2870(p):genDS6000(p);}
+function getSchedule(p){return p.study==='MK2870'?genMK2870(p):p.study==='DS6000'?genDS6000(p):genDESTINY(p);}
 
 function partLabel(p){
   if(p.study==='MK2870') return {part1:'Part 1 – Safety Run-in',part2_induction:'Part 2 – Induction',part2_arm_a:'Part 2 – Arm A (Maintenance)',part2_arm_b:'Part 2 – Arm B (Maintenance)'}[p.part]||p.part;
+  if(p.study==='DESTINY'){
+    return {arm_a:'Arm A – T-DXd + Rilvegostomig',arm_b:'Arm B – T-DXd + Pembrolizumab',arm_c:'Arm C – Carboplatino + Paclitaxel + Pembrolizumab'}[p.part]||p.part;
+  }
   if(p.part==='experimental') return 'R-DXd 5.6mg/kg (sperimentale)';
   return {paclitaxel:'Paclitaxel Q4W',topotecan:'Topotecan Q4W',pld:'PLD Q4W'}[p.sub]||'Comparatore';
 }
@@ -536,10 +694,29 @@ function winBadge(planned,actual,w){
   return Math.abs(diff(planned,actual))<=w ? badge('green','in finestra') : badge('red','fuori finestra');
 }
 
+// ===================== SCREENING HELPERS =====================
+function saveScrDate(pi,key,val,e){
+  if(e)e.stopPropagation();
+  if(!patients[pi].scrDates)patients[pi].scrDates={};
+  if(val){patients[pi].scrDates[key]=val; patients[pi].scrChecklist[key]=true;}
+  else { delete patients[pi].scrDates[key]; }
+  save(patients); render();
+}
+
+function setOutcome(pi,val,e){
+  if(e)e.stopPropagation();
+  const p=patients[pi];
+  if(val===null){ p.status='screening'; p.c1d1=null; }
+  else if(val==='fail'){ p.status='screen_fail'; p.c1d1=null; }
+  else if(val&&val.match(/^\d{4}-\d{2}-\d{2}$/)){ p.status='active'; p.c1d1=val; }
+  else { toast('Inserisci una data valida'); return; }
+  save(patients); render();
+}
+
 // ===================== RENDER =====================
 function setFilter(f){
   filter=f;
-  ['all','MK2870','DS6000'].forEach(id=>{
+  ['all','MK2870','DS6000','DESTINY'].forEach(id=>{
     const el=document.getElementById('tab-'+id);
     if(el) el.className='tab'+(f===id?' active':'');
   });
@@ -560,11 +737,13 @@ function render(){
       const todayStr=td();
       const next=visits.filter(v=>v.date>=todayStr).sort((a,b)=>a.date.localeCompare(b.date))[0];
       const isSel=selPt===i;
-      const studyBadgeHtml=p.study==='MK2870'?badge('blue','MK-2870-036'):badge('yellow','DS6000-109');
+      const studyBadgeHtml=p.study==='MK2870'?badge('blue','MK-2870-036'):p.study==='DS6000'?badge('yellow','DS6000-109'):badge('green','DESTINY-E01');
       let scrBadge='';
-      if(p.study==='DS6000'){
+      if(p.study==='DS6000'||p.study==='DESTINY'||(p.study==='MK2870'&&p.part!=='part1')){
+        const items=p.study==='DESTINY'?DESTINY_SCR_ITEMS:p.study==='MK2870'?MK2870_SCR_ITEMS:SCR_ITEMS;
         const done=Object.values(p.scrChecklist||{}).filter(Boolean).length;
-        if(done<SCR_ITEMS.length) scrBadge=badge('yellow',`Scr ${done}/${SCR_ITEMS.length}`);
+        if(p.status==='screening') scrBadge=badge('yellow',`Screening ${done}/${items.length}`);
+        else if(p.status==='screen_fail') scrBadge=badge('red','Screen fail');
       }
 
       let detailHtml='';
@@ -583,8 +762,7 @@ function render(){
             </div>
           </div>
           <div class="card-right">
-            ${next?`<div class="card-next-label">prossima visita</div><div class="card-next-val">${next.key}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${fmt(next.date)}</div>`:`<div class="card-next-label">nessuna visita futura</div>`}
-          </div>
+            ${p.status==='screening'?`<div class="badge badge-yellow">In screening</div>`:p.status==='screen_fail'?`<div class="badge badge-red">Screen fail</div>`:next?`<div class="card-next-label">prossima visita</div><div class="card-next-val">${next.key}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${fmt(next.date)}</div>`:`<div class="card-next-label">nessuna visita futura</div>`}
         </div>
         ${detailHtml}
       </div>`;
@@ -606,17 +784,27 @@ function renderDetail(p,i,visits){
   const todayStr=td();
 
   // Tabs
-  const tabs=['visits','scans',...(p.study==='DS6000'?['screening']:[])];
+  const needsScr=p.study==='DS6000'||p.study==='DESTINY'||(p.study==='MK2870'&&p.part!=='part1');
+  const isScreening=needsScr&&p.status==='screening';
+  const isScreenFail=p.status==='screen_fail';
+  const tabs=[...((!isScreening&&!isScreenFail)?['visits','scans']:[]),...(needsScr?['screening']:[])];
+  if(!tabs.includes(detView)) detView=tabs[0]||'screening';
   const tabLabels={visits:'<i class="ti ti-pill"></i> Visite',scans:'<i class="ti ti-scan"></i> TC / Eco',screening:'<i class="ti ti-clipboard-check"></i> Screening'};
 
   const tabsHtml=`<div class="detail-tabs">${tabs.map(t=>`<button class="detail-tab${detView===t?' active':''}" onclick="setDetView('${t}',event)">${tabLabels[t]}</button>`).join('')}</div>`;
 
   // Stats
   const futureVis=visits.filter(v=>v.date>=todayStr).length;
-  const statsHtml=`<div class="detail-stats">
-    <div class="stat"><div class="stat-label">C1D1</div><div class="stat-val">${fmt(p.c1d1)}</div></div>
-    ${p.study==='MK2870'?`<div class="stat"><div class="stat-label">Bevacizumab</div><div class="stat-val">${p.beva==='yes'?'Sì':'No'}</div></div>`:''}
-    <div class="stat"><div class="stat-label">Visite future</div><div class="stat-val">${futureVis}</div></div>
+  const scrDatesFS=p.scrDates||{};
+    const firstDateFS=Object.values(scrDatesFS).filter(Boolean).sort()[0]||null;
+    const deadlineFS=firstDateFS?addDays(firstDateFS,28):null;
+    const daysLeftFS=deadlineFS?diff(td(),deadlineFS):null;
+    const statsHtml=`<div class="detail-stats">
+    ${p.c1d1?`<div class="stat"><div class="stat-label">C1D1</div><div class="stat-val">${fmt(p.c1d1)}</div></div>`:
+      deadlineFS?`<div class="stat"><div class="stat-label">Deadline scr.</div><div class="stat-val" style="color:${daysLeftFS<0?'var(--red)':daysLeftFS<=7?'var(--yellow)':'var(--green)'}">${fmt(deadlineFS)}</div></div>`:
+      `<div class="stat"><div class="stat-label">Stato</div><div class="stat-val">Screening</div></div>`}
+    ${p.study==='MK2870'&&p.c1d1?`<div class="stat"><div class="stat-label">Bevacizumab</div><div class="stat-val">${p.beva==='yes'?'Sì':'No'}</div></div>`:''}
+    ${p.c1d1?`<div class="stat"><div class="stat-label">Visite future</div><div class="stat-val">${futureVis}</div></div>`:''}
   </div>`;
 
   // Content
@@ -633,12 +821,14 @@ function renderDetail(p,i,visits){
         <button class="btn-xs confirm" onclick="saveVDate(${i},'${v.key}',document.getElementById('ev-${v.key}').value,event)"><i class="ti ti-check"></i> Salva</button>
         <button class="btn-xs" onclick="editV=null;render();event.stopPropagation();"><i class="ti ti-x"></i></button>
       </div>`:'';
-      return `<div class="visit-row">
+      const isNoDrug=v.drugs&&v.drugs.length===0;
+      return `<div class="visit-row${isNoDrug?' visit-nodrug':''}">
         <div><div class="visit-key${isPast?' visit-key-past':''}">${v.key}</div><div class="visit-window">${isPast?'✓':'±'+v.window+'g'}</div></div>
         <div>
           <div class="visit-date${isPast?' visit-date-past':''}">${fmt(v.date)}</div>
           ${!isPast?`<div class="visit-range">${fmt(wF)} – ${fmt(wT)}</div>`:''}
-          <div class="visit-drugs">${v.drugs.join(' · ')}</div>
+          ${v.drugs&&v.drugs.length>0?`<div class="visit-drugs">${v.drugs.join(' · ')}</div>`:'<div class="visit-nodrug-label">visita di controllo</div>'}
+          ${v.assess?`<div class="visit-assess">${v.assess}</div>`:''}
           ${editSec}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
@@ -679,20 +869,72 @@ function renderDetail(p,i,visits){
     }).join('');
   } else if(detView==='screening'){
     const scr=p.scrChecklist||{};
-    const done=SCR_ITEMS.filter(it=>scr[it.key]).length;
-    const pct=Math.round(done/SCR_ITEMS.length*100);
+    const scrDates=p.scrDates||{};
+    const scrList=p.study==='DESTINY'?DESTINY_SCR_ITEMS:p.study==='MK2870'?MK2870_SCR_ITEMS:SCR_ITEMS;
+    const done=scrList.filter(it=>scr[it.key]).length;
+    const pct=Math.round(done/scrList.length*100);
+    // Calculate earliest assessment date
+    const allDates=Object.values(scrDates).filter(Boolean).sort();
+    const firstDate=allDates[0]||null;
+    const deadline=firstDate?addDays(firstDate,28):null;
+    const daysLeft=deadline?diff(td(),deadline):null;
+    const deadlineColor=daysLeft===null?'var(--text3)':daysLeft<0?'var(--red)':daysLeft<=7?'var(--yellow)':'var(--green)';
+    // Randomization outcome section
+    const roHtml=p.status==='screen_fail'
+      ?`<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:13px;font-weight:500;color:var(--red);">⊘ Screening failure</span>
+          <button class="btn-xs danger-xs" onclick="setOutcome(${i},null,event)"><i class="ti ti-x"></i> Annulla</button>
+        </div>`
+      :p.status==='active'&&p.c1d1
+      ?`<div style="background:var(--green-bg);border:1px solid var(--green);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:13px;font-weight:500;color:var(--green);">✓ Randomizzata — C1D1: ${fmt(p.c1d1)}</span>
+          <button class="btn-xs" onclick="setOutcome(${i},null,event)"><i class="ti ti-pencil"></i></button>
+        </div>`
+      :`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:12px;">
+          <p style="font-size:12px;color:var(--text2);margin-bottom:8px;">Esito randomizzazione</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="date" id="rand-c1d1" class="inline-date" placeholder="Data C1D1" onclick="event.stopPropagation()">
+            <button class="btn-xs confirm" onclick="setOutcome(${i},document.getElementById('rand-c1d1').value,event)"><i class="ti ti-check"></i> Randomizzata</button>
+            <button class="btn-xs danger-xs" onclick="setOutcome(${i},'fail',event)"><i class="ti ti-x"></i> Screen fail</button>
+          </div>
+        </div>`;
     content=`<div class="scr-header">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:13px;font-weight:500;">Checklist screening</span>
-        <span class="badge badge-${done===SCR_ITEMS.length?'green':'yellow'}">${done}/${SCR_ITEMS.length}</span>
+        <span class="badge badge-${done===scrList.length?'green':'yellow'}">${done}/${scrList.length}</span>
       </div>
+      ${firstDate?`<div style="background:var(--bg3);border-radius:var(--r-sm);padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <div>
+          <span style="font-size:11px;color:var(--text3);">Primo assessment: </span>
+          <span style="font-size:12px;font-weight:500;font-family:'DM Mono',monospace;">${fmt(firstDate)}</span>
+        </div>
+        <div>
+          <span style="font-size:11px;color:var(--text3);">Deadline (28gg): </span>
+          <span style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:${deadlineColor};">${fmt(deadline)}</span>
+          ${daysLeft!==null?`<span style="font-size:11px;color:${deadlineColor};margin-left:4px;">(${daysLeft>=0?daysLeft+' giorni rimasti':'scaduta'})</span>`:''}
+        </div>
+      </div>`:'<p style="font-size:11px;color:var(--text3);margin-bottom:8px;">Inserisci le date degli assessment per calcolare automaticamente la deadline di 28 giorni.</p>'}
       <div class="scr-progress-bar"><div class="scr-progress-fill" style="width:${pct}%"></div></div>
-      <p style="font-size:11px;color:var(--text3);">Tutti gli esami vanno completati entro 28gg prima di C1D1 (${fmt(addDays(p.c1d1,-28))} → ${fmt(addDays(p.c1d1,-1))})</p>
     </div>
-    ${SCR_ITEMS.map(it=>`<div class="scr-item" onclick="toggleScr(${i},'${it.key}',event)">
-      <div class="scr-check${scr[it.key]?' done':''}"><i class="ti ti-check scr-check-icon"></i></div>
-      <span class="scr-label${scr[it.key]?' done':''}">${it.label}</span>
-    </div>`).join('')}`;
+    ${roHtml}
+    ${scrList.map(it=>{
+      const dateVal=scrDates[it.key]||'';
+      return `<div class="scr-item" style="flex-direction:column;align-items:flex-start;gap:6px;" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;gap:10px;width:100%;" onclick="toggleScr(${i},'${it.key}',event)">
+          <div class="scr-check${scr[it.key]?' done':''}"><i class="ti ti-check scr-check-icon"></i></div>
+          <span class="scr-label${scr[it.key]?' done':''}">${it.label}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding-left:30px;">
+          <span style="font-size:11px;color:var(--text3);">Data:</span>
+          ${dateVal
+            ?`<span style="font-size:12px;font-weight:500;font-family:'DM Mono',monospace;">${fmt(dateVal)}</span>
+              <button class="btn-xs" onclick="saveScrDate(${i},'${it.key}','',event)"><i class="ti ti-x"></i></button>`
+            :`<input type="date" id="sd-${it.key}" class="inline-date" onclick="event.stopPropagation()">
+              <button class="btn-xs confirm" onclick="const v=document.getElementById('sd-${it.key}').value;if(v)saveScrDate(${i},'${it.key}',v,event)"><i class="ti ti-check"></i></button>`
+          }
+        </div>
+      </div>`;
+    }).join('')}`;
   }
 
   // Action buttons
@@ -707,7 +949,7 @@ function renderDetail(p,i,visits){
   return `<div class="detail" onclick="event.stopPropagation()">
     <div class="detail-header">
       <div>
-        <div class="detail-title">${p.id} <span style="font-size:13px;font-weight:400;color:var(--text2);">· ${p.study==='MK2870'?'MK-2870-036':'DS6000-109'}</span></div>
+        <div class="detail-title">${p.id} <span style="font-size:13px;font-weight:400;color:var(--text2);">· ${p.study==='MK2870'?'MK-2870-036':p.study==='DS6000'?'DS6000-109':'DESTINY-E01'}</span></div>
         <div style="font-size:12px;color:var(--text2);margin-top:3px;">${partLabel(p)}</div>
       </div>
       ${actBtns}
@@ -790,13 +1032,16 @@ function hideStudySelector(){ document.getElementById('study-selector').classNam
 function openModal(study){
   hideStudySelector();
   modalStudy=study;
-  document.getElementById('modal-title').textContent=`Nuova paziente – ${study==='MK2870'?'MK-2870-036':'DS6000-109'}`;
+  document.getElementById('modal-title').textContent=`Nuova paziente – ${study==='MK2870'?'MK-2870-036':study==='DS6000'?'DS6000-109':'DESTINY-E01'}`;
   const partSel=document.getElementById('new-part');
   const rowBeva=document.getElementById('row-beva');
   const rowSub=document.getElementById('row-sub');
   if(study==='MK2870'){
     partSel.innerHTML=`<option value="part1">Part 1 – Safety Run-in</option><option value="part2_induction">Part 2 – Induction</option><option value="part2_arm_a">Part 2 – Arm A (Maintenance)</option><option value="part2_arm_b">Part 2 – Arm B (Maintenance)</option>`;
     rowBeva.style.display=''; rowSub.style.display='none';
+  } else if(study==='DESTINY'){
+    partSel.innerHTML=`<option value="arm_a">Arm A – T-DXd + Rilvegostomig</option><option value="arm_b">Arm B – T-DXd + Pembrolizumab</option><option value="arm_c">Arm C – Carboplatino + Paclitaxel + Pembrolizumab</option>`;
+    rowBeva.style.display='none'; rowSub.style.display='none';
   } else {
     partSel.innerHTML=`<option value="experimental">Braccio sperimentale (R-DXd)</option><option value="comparator">Braccio comparatore (ICC)</option>`;
     rowBeva.style.display='none';
@@ -815,12 +1060,16 @@ function onPartChange(){
 }
 function addPatient(){
   const id=document.getElementById('new-id').value.trim();
-  const c1d1=document.getElementById('new-c1d1').value;
+  const c1d1=document.getElementById('new-c1d1').value||null;
   const part=document.getElementById('new-part').value;
   const sub=document.getElementById('new-sub')?.value||null;
   const beva=document.getElementById('new-beva').value;
-  if(!id||!c1d1){alert('Inserisci codice paziente e data C1D1');return;}
-  patients.push({id,study:modalStudy,part,sub:(modalStudy==='DS6000'&&part==='comparator')?sub:null,beva,c1d1,overrides:{},ctActual:{},scrChecklist:{}});
+  if(!id){alert('Inserisci il codice paziente');return;}
+  // Part 1 MK2870 richiede C1D1
+  const needsC1D1=(modalStudy==='MK2870'&&part==='part1');
+  if(needsC1D1&&!c1d1){alert('Per Part 1 inserisci la data C1D1');return;}
+  const status=c1d1?'active':'screening';
+  patients.push({id,study:modalStudy,part,sub:(modalStudy==='DS6000'&&part==='comparator')?sub:null,beva,c1d1,status,overrides:{},ctActual:{},scrChecklist:{},scrDates:{},randomizationOutcome:null});
   save(patients); hideModal();
   document.getElementById('new-id').value=''; document.getElementById('new-c1d1').value='';
   render(); toast(`Paziente ${id} aggiunta!`);
