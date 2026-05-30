@@ -101,7 +101,8 @@ main { padding: 14px 20px; }
   transition: border-color .15s, background .15s;
   overflow: hidden;
 }
-.card.selected { border-color: var(--accent); background: var(--bg3); }
+.card.selected { border-color: var(--accent); background: var(--bg3); border-radius: var(--r) var(--r) 0 0; }
+.card.selected .card-inner { border-radius: var(--r) var(--r) 0 0; }
 .card:active { background: var(--bg3); }
 .card-inner { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .card-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -130,7 +131,7 @@ main { padding: 14px 20px; }
 .badge-gray   { background: rgba(255,255,255,0.05); color: var(--text2); }
 
 /* ---- DETAIL PANEL ---- */
-.detail { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 16px; overflow: hidden; }
+.detail { background: var(--bg2); border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--r) var(--r); overflow: hidden; display: block; width: 100%; }
 .detail-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .detail-title { font-size: 16px; font-weight: 600; }
 .detail-actions { display: flex; gap: 5px; flex-wrap: wrap; }
@@ -763,6 +764,7 @@ function render(){
           </div>
           <div class="card-right">
             ${p.status==='screening'?`<div class="badge badge-yellow">In screening</div>`:p.status==='screen_fail'?`<div class="badge badge-red">Screen fail</div>`:next?`<div class="card-next-label">prossima visita</div><div class="card-next-val">${next.key}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${fmt(next.date)}</div>`:`<div class="card-next-label">nessuna visita futura</div>`}
+          </div>
         </div>
         ${detailHtml}
       </div>`;
