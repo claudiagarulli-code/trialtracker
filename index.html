@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TrialTracker">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Trial Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+:root {
+  --bg:        #0a0e1a;
+  --bg2:       #111627;
+  --bg3:       #192036;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.13);
+  --text:      #e8eaf2;
+  --text2:     #8891aa;
+  --text3:     #4a5270;
+  --accent:    #5b8fff;
+  --accent2:   #3d6bdb;
+  --green:     #2ecc8a;
+  --green-bg:  rgba(46,204,138,0.1);
+  --yellow:    #f5c842;
+  --yellow-bg: rgba(245,200,66,0.1);
+  --red:       #ff5c6e;
+  --red-bg:    rgba(255,92,110,0.1);
+  --blue-bg:   rgba(91,143,255,0.1);
+  --r:         10px;
+  --r-sm:      6px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: calc(70px + var(--safe-bot));
+}
+
+/* ---- HEADER ---- */
+.header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(10,14,26,0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: calc(var(--safe-top) + 14px) 20px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header-title { display: flex; align-items: center; gap: 10px; }
+.header-logo {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: #fff;
+}
+.header h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+.header-sub { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.btn-add {
+  background: var(--accent); color: #fff; border: none; border-radius: var(--r-sm);
+  padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
+  display: flex; align-items: center; gap: 5px; transition: background .15s;
+}
+.btn-add:active { background: var(--accent2); }
+
+/* ---- TABS ---- */
+.tabs {
+  display: flex; gap: 6px; padding: 14px 20px 0;
+  overflow-x: auto; scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 500; cursor: pointer; border: none;
+  background: var(--bg2); color: var(--text2);
+  transition: all .15s;
+}
+.tab.active { background: var(--accent); color: #fff; }
+
+/* ---- MAIN ---- */
+main { padding: 14px 20px; }
+
+/* ---- CARDS ---- */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  overflow: hidden;
+}
+.card.selected { border-color: var(--accent); background: var(--bg3); }
+.card:active { background: var(--bg3); }
+.card-inner { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.card-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.avatar {
+  width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+  background: var(--blue-bg); border: 1px solid rgba(91,143,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--accent);
+}
+.card-name { font-size: 15px; font-weight: 600; }
+.card-sub { font-size: 12px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-right { text-align: right; flex-shrink: 0; }
+.card-next-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+.card-next-val { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; }
+
+/* ---- BADGES ---- */
+.badge {
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 20px; letter-spacing: 0.03em; white-space: nowrap;
+}
+.badge-blue   { background: var(--blue-bg);   color: var(--accent); }
+.badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
+.badge-green  { background: var(--green-bg);  color: var(--green); }
+.badge-red    { background: var(--red-bg);    color: var(--red); }
+.badge-gray   { background: rgba(255,255,255,0.05); color: var(--text2); }
+
+/* ---- DETAIL PANEL ---- */
+.detail { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 16px; overflow: hidden; }
+.detail-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.detail-title { font-size: 16px; font-weight: 600; }
+.detail-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+.btn-icon {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+  border-radius: var(--r-sm); padding: 6px 10px; font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; gap: 4px; white-space: nowrap;
+  transition: color .15s, border-color .15s;
+}
+.btn-icon:active { color: var(--text); }
+.btn-icon.active { color: var(--accent); border-color: var(--accent); }
+.btn-icon.danger { color: var(--red); }
+.detail-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.stat { background: var(--bg3); border-radius: var(--r-sm); padding: 10px 12px; }
+.stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; font-family: 'DM Mono', monospace; }
+.stat-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; }
+.detail-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+.detail-tab {
+  flex: 1; padding: 10px; font-size: 12px; font-weight: 500; text-align: center;
+  cursor: pointer; border: none; background: transparent; color: var(--text2);
+  border-bottom: 2px solid transparent; transition: all .15s;
+}
+.detail-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.detail-body { padding: 0 16px; }
+
+/* ---- VISIT ROWS ---- */
+.visit-row {
+  display: grid; grid-template-columns: 72px 1fr auto;
+  gap: 12px; align-items: start; padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.visit-row:last-child { border-bottom: none; }
+.visit-key { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; }
+.visit-key-past { color: var(--text3); }
+.visit-window { font-size: 10px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.visit-date { font-size: 13px; font-weight: 500; }
+.visit-date-past { color: var(--text3); }
+.visit-range { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.visit-drugs { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.edit-inline { display: flex; align-items: center; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+
+/* ---- SCAN ROWS ---- */
+.scan-row { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.scan-row:last-child { border-bottom: none; }
+.scan-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.scan-label { font-size: 13px; font-weight: 500; }
+.scan-range { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: 'DM Mono', monospace; }
+.scan-actual { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.scan-actual-label { font-size: 12px; color: var(--text2); }
+.scan-actual-val { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; }
+
+/* ---- SCREENING ---- */
+.scr-header { padding: 14px 0 8px; }
+.scr-progress-bar { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; margin: 8px 0; }
+.scr-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+.scr-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+.scr-item:last-child { border-bottom: none; }
+.scr-check {
+  width: 20px; height: 20px; flex-shrink: 0; border-radius: 5px;
+  border: 2px solid var(--border2); background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.scr-check.done { background: var(--green); border-color: var(--green); }
+.scr-check-icon { font-size: 12px; color: #fff; display: none; }
+.scr-check.done .scr-check-icon { display: block; }
+.scr-label { font-size: 13px; line-height: 1.4; }
+.scr-label.done { text-decoration: line-through; color: var(--text3); }
+
+/* ---- MODAL ---- */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--r) var(--r) 0 0;
+  padding: 20px 20px calc(20px + var(--safe-bot));
+  width: 100%; max-width: 560px;
+  animation: slideUp .25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 18px; }
+.modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-row.single { grid-template-columns: 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+label { font-size: 12px; color: var(--text2); font-weight: 500; }
+input[type=text], input[type=date], select {
+  background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+  border-radius: var(--r-sm); padding: 10px 12px; font-size: 14px;
+  font-family: inherit; width: 100%; outline: none;
+  transition: border-color .15s;
+}
+input[type=text]:focus, input[type=date]:focus, select:focus { border-color: var(--accent); }
+select option { background: var(--bg2); }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.btn-primary {
+  flex: 1; background: var(--accent); color: #fff; border: none;
+  border-radius: var(--r-sm); padding: 12px; font-size: 14px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background .15s;
+}
+.btn-primary:active { background: var(--accent2); }
+.btn-secondary {
+  background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px 16px; font-size: 14px; cursor: pointer;
+  font-family: inherit; transition: color .15s;
+}
+.btn-secondary:active { color: var(--text); }
+
+/* ---- STUDY SELECTOR ---- */
+.study-selector {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+  padding: 24px;
+}
+.study-selector.open { display: flex; }
+.study-box {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 24px; width: 100%; max-width: 360px;
+}
+.study-box h2 { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+.study-btn {
+  display: block; width: 100%; text-align: left; padding: 12px 14px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r-sm);
+  color: var(--text); font-size: 14px; font-weight: 500; cursor: pointer;
+  margin-bottom: 8px; font-family: inherit; transition: border-color .15s;
+}
+.study-btn:active { border-color: var(--accent); }
+.study-btn .study-sub { font-size: 11px; color: var(--text2); font-weight: 400; margin-top: 2px; }
+
+/* ---- INLINE EDIT ---- */
+.inline-date {
+  background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+  border-radius: var(--r-sm); padding: 5px 8px; font-size: 12px; font-family: inherit;
+}
+.btn-xs {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+  border-radius: var(--r-sm); padding: 5px 9px; font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; gap: 3px; font-family: inherit;
+}
+.btn-xs.confirm { color: var(--green); border-color: var(--green); }
+.btn-xs.danger-xs { color: var(--red); border-color: var(--red); }
+
+/* ---- EMPTY STATE ---- */
+.empty { text-align: center; padding: 48px 20px; color: var(--text2); }
+.empty i { font-size: 40px; opacity: .3; display: block; margin-bottom: 12px; }
+.empty p { font-size: 14px; }
+
+/* ---- TOAST ---- */
+.toast {
+  position: fixed; bottom: calc(80px + var(--safe-bot)); left: 50%; transform: translateX(-50%);
+  background: var(--bg3); border: 1px solid var(--border2); border-radius: 20px;
+  padding: 8px 18px; font-size: 13px; z-index: 200;
+  animation: fadeInOut 2.5s ease forwards;
+  white-space: nowrap;
+}
+@keyframes fadeInOut { 0%{opacity:0;transform:translateX(-50%) translateY(8px)} 15%{opacity:1;transform:translateX(-50%) translateY(0)} 75%{opacity:1} 100%{opacity:0} }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-title">
+    <div class="header-logo"><i class="ti ti-dna-2"></i></div>
+    <div>
+      <h1>Trial Tracker</h1>
+      <div class="header-sub">Ginecologia Oncologica · Mauriziano</div>
+    </div>
+  </div>
+  <button class="btn-add" onclick="showStudySelector()"><i class="ti ti-plus"></i> Paziente</button>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="setFilter('all')" id="tab-all">Tutte</button>
+  <button class="tab" onclick="setFilter('MK2870')" id="tab-MK2870">MK-2870-036</button>
+  <button class="tab" onclick="setFilter('DS6000')" id="tab-DS6000">DS6000-109</button>
+</div>
+
+<!-- MAIN -->
+<main id="main"></main>
+
+<!-- STUDY SELECTOR -->
+<div class="study-selector" id="study-selector" onclick="if(event.target===this)hideStudySelector()">
+  <div class="study-box">
+    <h2>Seleziona studio</h2>
+    <button class="study-btn" onclick="openModal('MK2870')">
+      MK-2870-036
+      <div class="study-sub">Sac-TMT · Part 1 Safety Run-in / Part 2 Maintenance</div>
+    </button>
+    <button class="study-btn" onclick="openModal('DS6000')">
+      DS6000-109
+      <div class="study-sub">R-DXd vs Investigator's Choice · Phase 3</div>
+    </button>
+    <button class="btn-secondary" style="width:100%;margin-top:4px;" onclick="hideStudySelector()">Annulla</button>
+  </div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="add-modal" onclick="if(event.target===this)hideModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="modal-title">Nuova paziente</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Codice paziente</label>
+        <input type="text" id="new-id" placeholder="es. IT-001">
+      </div>
+      <div class="form-group">
+        <label>Data C1D1</label>
+        <input type="date" id="new-c1d1">
+      </div>
+    </div>
+    <div class="form-row single">
+      <div class="form-group" id="fg-part">
+        <label id="part-label">Braccio / Fase</label>
+        <select id="new-part" onchange="onPartChange()"></select>
+      </div>
+    </div>
+    <div class="form-row" id="row-sub" style="display:none;">
+      <div class="form-group" style="grid-column:1/-1;">
+        <label id="sub-label">Chemioterapico</label>
+        <select id="new-sub"></select>
+      </div>
+    </div>
+    <div class="form-row single" id="row-beva">
+      <div class="form-group">
+        <label>Bevacizumab</label>
+        <select id="new-beva">
+          <option value="yes">Sì</option>
+          <option value="no">No</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal()">Annulla</button>
+      <button class="btn-primary" onclick="addPatient()">Aggiungi paziente</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== DATA =====================
+const KEY = 'trialtracker_v1';
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch(e) { return []; } }
+function save(p) { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch(e) {} }
+
+let patients = load();
+let selPt = null, detView = 'visits', editV = null, filter = 'all';
+let modalStudy = null;
+
+// Seed demo
+if (!patients.find(p=>p.id==='IT-001'&&p.study==='MK2870')) {
+  patients.push({ id:'IT-001', study:'MK2870', part:'part1', sub:null, beva:'yes', c1d1:'2026-04-27', overrides:{'C1D29':'2026-05-28','C2D1':'2026-06-11'}, ctActual:{}, scrChecklist:{} });
+  save(patients);
+}
+
+// ===================== UTILS =====================
+function addDays(ds,n){const d=new Date(ds+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];}
+function fmt(ds){if(!ds)return'—';return new Date(ds+'T00:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function diff(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+function td(){return new Date().toISOString().split('T')[0];}
+function overdue(ds){return ds<td();}
+function soon(ds){const d=diff(td(),ds);return d>=0&&d<=14;}
+
+// ===================== SCHEDULE GENERATORS =====================
+function genMK2870(p){
+  const {part,beva,c1d1,overrides={}}=p; const visits=[];
+  function res(k,base){return overrides[k]||base;}
+  if(part==='part1'||part==='part2_arm_a'){
+    let pD1=c1d1;
+    for(let c=1;c<=14;c++){
+      const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,42)); pD1=cD1;
+      const d1d=['Sac-TMT','Pembrolizumab']; if(beva==='yes')d1d.push('Bevacizumab');
+      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:d1d,window:3});
+      visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:['Sac-TMT'],window:3});
+      if(beva==='yes') visits.push({key:`C${c}D22`,cycle:c,day:22,date:res(`C${c}D22`,addDays(cD1,21)),drugs:['Bevacizumab'],window:3});
+      visits.push({key:`C${c}D29`,cycle:c,day:29,date:res(`C${c}D29`,addDays(cD1,28)),drugs:['Sac-TMT'],window:3});
+    }
+  } else if(part==='part2_induction'){
+    for(let c=1;c<=6;c++){
+      const k=`C${c}D1`, date=res(k,addDays(c1d1,(c-1)*21));
+      const dr=['Pembrolizumab','Paclitaxel','Cisplatin/Carboplatino'];
+      if(beva==='yes')dr.push('Bevacizumab');
+      visits.push({key:k,cycle:c,day:1,date,drugs:dr,window:3});
+    }
+  } else if(part==='part2_arm_b'){
+    let pD1=c1d1;
+    for(let c=1;c<=14;c++){
+      const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,42)); pD1=cD1;
+      const d1d=['Pembrolizumab']; if(beva==='yes')d1d.push('Bevacizumab');
+      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:d1d,window:3});
+      if(beva==='yes') visits.push({key:`C${c}D22`,cycle:c,day:22,date:res(`C${c}D22`,addDays(cD1,21)),drugs:['Bevacizumab'],window:3});
+    }
+  }
+  const ctScans=genMKScans(c1d1,part,overrides);
+  return {visits,ctScans,echoVisits:[]};
+}
+function genMKScans(c1d1,part,ov={}){
+  const s=[];
+  if(part==='part2_induction'){
+    s.push({key:'TC-W9',label:'TC sett. 9',date:ov['TC-W9']||addDays(c1d1,63),window:7});
+    s.push({key:'TC-W18',label:'TC sett. 18',date:ov['TC-W18']||addDays(c1d1,126),window:7});
+    return s;
+  }
+  [9,18,27,36,45,54].forEach(w=>{const k=`TC-W${w}`;s.push({key:k,label:`TC sett. ${w}`,date:ov[k]||addDays(c1d1,w*7),window:7});});
+  let w=66; for(let i=0;i<8;i++){const k=`TC-W${w}`;s.push({key:k,label:`TC sett. ${w}`,date:ov[k]||addDays(c1d1,w*7),window:7});w+=12;}
+  return s;
+}
+
+function genDS6000(p){
+  const {part,sub,c1d1,overrides={}}=p; const visits=[];
+  function res(k,base){return overrides[k]||base;}
+  if(part==='experimental'){
+    let pD1=c1d1;
+    for(let c=1;c<=20;c++){
+      const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,21)); pD1=cD1;
+      visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['R-DXd 5.6 mg/kg IV'],window:3});
+    }
+  } else if(part==='comparator'){
+    if(sub==='paclitaxel'){
+      let pD1=c1d1;
+      for(let c=1;c<=16;c++){
+        const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,28)); pD1=cD1;
+        visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['Paclitaxel 80mg/m²'],window:3});
+        visits.push({key:`C${c}D8`,cycle:c,day:8,date:res(`C${c}D8`,addDays(cD1,7)),drugs:['Paclitaxel 80mg/m²'],window:3});
+        visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:['Paclitaxel 80mg/m²'],window:3});
+        visits.push({key:`C${c}D22`,cycle:c,day:22,date:res(`C${c}D22`,addDays(cD1,21)),drugs:['Paclitaxel 80mg/m²'],window:3});
+      }
+    } else if(sub==='topotecan'){
+      let pD1=c1d1;
+      for(let c=1;c<=16;c++){
+        const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,28)); pD1=cD1;
+        visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['Topotecan 4mg/m²'],window:3});
+        visits.push({key:`C${c}D8`,cycle:c,day:8,date:res(`C${c}D8`,addDays(cD1,7)),drugs:['Topotecan 4mg/m²'],window:3});
+        visits.push({key:`C${c}D15`,cycle:c,day:15,date:res(`C${c}D15`,addDays(cD1,14)),drugs:['Topotecan 4mg/m²'],window:3});
+      }
+    } else if(sub==='pld'){
+      let pD1=c1d1;
+      for(let c=1;c<=16;c++){
+        const k=`C${c}D1`, cD1=c===1?c1d1:res(k,addDays(pD1,28)); pD1=cD1;
+        visits.push({key:k,cycle:c,day:1,date:cD1,drugs:['PLD 50mg/m²'],window:3});
+      }
+    }
+  }
+  const ctScans=genDS6000Scans(c1d1,overrides);
+  const echoVisits=sub==='pld'
+    ? visits.filter(v=>v.day===1&&v.cycle>=5&&(v.cycle-5)%4===0).map(v=>({key:`ECHO-${v.key}`,label:`Ecocardio ${v.key}`,date:v.date,window:7}))
+    : [];
+  return {visits,ctScans,echoVisits};
+}
+function genDS6000Scans(c1d1,ov={}){
+  const s=[];
+  for(let w=6;w<=48;w+=6){const k=`TC-W${w}`;s.push({key:k,label:`TC sett. ${w}`,date:ov[k]||addDays(c1d1,w*7),window:7});}
+  let w=60; for(let i=0;i<10;i++){const k=`TC-W${w}`;s.push({key:k,label:`TC sett. ${w}`,date:ov[k]||addDays(c1d1,w*7),window:7});w+=12;}
+  return s;
+}
+
+const SCR_ITEMS=[
+  {key:'ic',label:'Consenso informato firmato'},
+  {key:'anamnesi',label:'Anamnesi completa / storia oncologica'},
+  {key:'obiettivo',label:'Esame obiettivo completo'},
+  {key:'ecog',label:'ECOG Performance Status'},
+  {key:'vitals',label:'Segni vitali, peso, altezza'},
+  {key:'ecg',label:'ECG 12 derivazioni (triplice) — entro 14gg da C1D1'},
+  {key:'echo',label:'Ecocardio / MUGA — entro 40gg da C1D1'},
+  {key:'oculistica',label:'Visita oculistica (acuità visiva, slit lamp, tonometria, fundoscopia)'},
+  {key:'ematologia',label:'Emocromo completo — entro 14gg da C1D1'},
+  {key:'chimica',label:'Chimica clinica — entro 14gg da C1D1'},
+  {key:'coagulazione',label:'Coagulazione — entro 14gg da C1D1'},
+  {key:'urine',label:'Esame urine'},
+  {key:'ca125',label:'CA-125 — entro 14gg da C1D1'},
+  {key:'hbv_hcv',label:'HBV/HCV (HBsAg, anti-HBc, anti-HCV Ab)'},
+  {key:'hiv',label:'HIV RNA + CD4 (se richiesto da normativa)'},
+  {key:'gravidanza',label:'Test gravidanza siero — negativo entro 72h da C1D1'},
+  {key:'biopsia',label:'Biopsia tumorale / tessuto archivistico'},
+  {key:'tc_baseline',label:'TC baseline RECIST 1.1 — entro 28gg da randomizzazione'},
+];
+
+function getSchedule(p){return p.study==='MK2870'?genMK2870(p):genDS6000(p);}
+
+function partLabel(p){
+  if(p.study==='MK2870') return {part1:'Part 1 – Safety Run-in',part2_induction:'Part 2 – Induction',part2_arm_a:'Part 2 – Arm A (Maintenance)',part2_arm_b:'Part 2 – Arm B (Maintenance)'}[p.part]||p.part;
+  if(p.part==='experimental') return 'R-DXd 5.6mg/kg (sperimentale)';
+  return {paclitaxel:'Paclitaxel Q4W',topotecan:'Topotecan Q4W',pld:'PLD Q4W'}[p.sub]||'Comparatore';
+}
+
+function badge(cls, txt){ return `<span class="badge badge-${cls}">${txt}</span>`; }
+function statusBadge(ds,isPast){
+  if(isPast) return badge('green','✓ completata');
+  if(overdue(ds)) return badge('red','scaduta');
+  if(soon(ds)) return badge('yellow','imminente');
+  return '';
+}
+function winBadge(planned,actual,w){
+  return Math.abs(diff(planned,actual))<=w ? badge('green','in finestra') : badge('red','fuori finestra');
+}
+
+// ===================== RENDER =====================
+function setFilter(f){
+  filter=f;
+  ['all','MK2870','DS6000'].forEach(id=>{
+    const el=document.getElementById('tab-'+id);
+    if(el) el.className='tab'+(f===id?' active':'');
+  });
+  render();
+}
+
+function render(){
+  const m=document.getElementById('main');
+  const filtered=patients.filter(p=>filter==='all'||p.study===filter);
+  let html='';
+
+  if(!filtered.length){
+    html=`<div class="empty"><i class="ti ti-user-off"></i><p>Nessuna paziente registrata.<br>Premi <strong>+ Paziente</strong> per iniziare.</p></div>`;
+  } else {
+    html=filtered.map(p=>{
+      const i=patients.indexOf(p);
+      const {visits}=getSchedule(p);
+      const todayStr=td();
+      const next=visits.filter(v=>v.date>=todayStr).sort((a,b)=>a.date.localeCompare(b.date))[0];
+      const isSel=selPt===i;
+      const studyBadgeHtml=p.study==='MK2870'?badge('blue','MK-2870-036'):badge('yellow','DS6000-109');
+      let scrBadge='';
+      if(p.study==='DS6000'){
+        const done=Object.values(p.scrChecklist||{}).filter(Boolean).length;
+        if(done<SCR_ITEMS.length) scrBadge=badge('yellow',`Scr ${done}/${SCR_ITEMS.length}`);
+      }
+
+      let detailHtml='';
+      if(isSel) detailHtml=renderDetail(p,i,visits);
+
+      return `<div class="card${isSel?' selected':''}" onclick="selectPt(${i},event)">
+        <div class="card-inner">
+          <div class="card-left">
+            <div class="avatar">${p.id.slice(0,2).toUpperCase()}</div>
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px;">
+                <span class="card-name">${p.id}</span>
+                ${studyBadgeHtml}${scrBadge}
+              </div>
+              <div class="card-sub">${partLabel(p)}</div>
+            </div>
+          </div>
+          <div class="card-right">
+            ${next?`<div class="card-next-label">prossima visita</div><div class="card-next-val">${next.key}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${fmt(next.date)}</div>`:`<div class="card-next-label">nessuna visita futura</div>`}
+          </div>
+        </div>
+        ${detailHtml}
+      </div>`;
+    }).join('');
+  }
+  m.innerHTML=html;
+}
+
+function selectPt(i,e){
+  if(e&&e.target.closest('button,input,select,label')) return;
+  if(selPt===i){ selPt=null; } else { selPt=i; detView='visits'; editV=null; }
+  render();
+}
+
+function renderDetail(p,i,visits){
+  if(!p.ctActual) p.ctActual={};
+  if(!p.scrChecklist) p.scrChecklist={};
+  const {ctScans,echoVisits=[]}=getSchedule(p);
+  const todayStr=td();
+
+  // Tabs
+  const tabs=['visits','scans',...(p.study==='DS6000'?['screening']:[])];
+  const tabLabels={visits:'<i class="ti ti-pill"></i> Visite',scans:'<i class="ti ti-scan"></i> TC / Eco',screening:'<i class="ti ti-clipboard-check"></i> Screening'};
+
+  const tabsHtml=`<div class="detail-tabs">${tabs.map(t=>`<button class="detail-tab${detView===t?' active':''}" onclick="setDetView('${t}',event)">${tabLabels[t]}</button>`).join('')}</div>`;
+
+  // Stats
+  const futureVis=visits.filter(v=>v.date>=todayStr).length;
+  const statsHtml=`<div class="detail-stats">
+    <div class="stat"><div class="stat-label">C1D1</div><div class="stat-val">${fmt(p.c1d1)}</div></div>
+    ${p.study==='MK2870'?`<div class="stat"><div class="stat-label">Bevacizumab</div><div class="stat-val">${p.beva==='yes'?'Sì':'No'}</div></div>`:''}
+    <div class="stat"><div class="stat-label">Visite future</div><div class="stat-val">${futureVis}</div></div>
+  </div>`;
+
+  // Content
+  let content='';
+  if(detView==='visits'){
+    const pastV=visits.filter(v=>v.date<todayStr).slice(-5);
+    const futV=visits.filter(v=>v.date>=todayStr).slice(0,20);
+    content=[...pastV,...futV].map(v=>{
+      const isPast=v.date<todayStr;
+      const wF=addDays(v.date,-v.window), wT=addDays(v.date,v.window);
+      const isEd=editV===v.key;
+      const editSec=isEd?`<div class="edit-inline">
+        <input type="date" id="ev-${v.key}" value="${v.date}" class="inline-date">
+        <button class="btn-xs confirm" onclick="saveVDate(${i},'${v.key}',document.getElementById('ev-${v.key}').value,event)"><i class="ti ti-check"></i> Salva</button>
+        <button class="btn-xs" onclick="editV=null;render();event.stopPropagation();"><i class="ti ti-x"></i></button>
+      </div>`:'';
+      return `<div class="visit-row">
+        <div><div class="visit-key${isPast?' visit-key-past':''}">${v.key}</div><div class="visit-window">${isPast?'✓':'±'+v.window+'g'}</div></div>
+        <div>
+          <div class="visit-date${isPast?' visit-date-past':''}">${fmt(v.date)}</div>
+          ${!isPast?`<div class="visit-range">${fmt(wF)} – ${fmt(wT)}</div>`:''}
+          <div class="visit-drugs">${v.drugs.join(' · ')}</div>
+          ${editSec}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+          ${statusBadge(v.date,isPast)}
+          ${!isEd?`<button class="btn-xs" onclick="editV='${v.key}';render();event.stopPropagation();" title="Modifica data"><i class="ti ti-pencil"></i></button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  } else if(detView==='scans'){
+    const allS=[...ctScans,...echoVisits].sort((a,b)=>a.date.localeCompare(b.date));
+    content=allS.map(s=>{
+      const isPast=s.date<todayStr;
+      const wF=addDays(s.date,-s.window), wT=addDays(s.date,s.window);
+      const act=p.ctActual[s.key]||'';
+      const actSec=act
+        ?`<div class="scan-actual">
+            <i class="ti ti-check" style="color:var(--green);font-size:13px;"></i>
+            <span class="scan-actual-label">Eseguita:</span>
+            <span class="scan-actual-val">${fmt(act)}</span>
+            ${winBadge(s.date,act,s.window)}
+            <button class="btn-xs danger-xs" onclick="saveCTA(${i},'${s.key}','',event)"><i class="ti ti-x"></i></button>
+          </div>`
+        :`<div class="scan-actual">
+            <span class="scan-actual-label">Data reale:</span>
+            <input type="date" id="cta-${s.key}" class="inline-date" onclick="event.stopPropagation()">
+            <button class="btn-xs confirm" onclick="const v=document.getElementById('cta-${s.key}').value;if(v)saveCTA(${i},'${s.key}',v,event);"><i class="ti ti-check"></i> Salva</button>
+          </div>`;
+      return `<div class="scan-row">
+        <div class="scan-top">
+          <div>
+            <div class="scan-label${isPast&&!act?' visit-date-past':''}">${s.label}</div>
+            <div class="scan-range">Prevista: ${fmt(s.date)} · ${fmt(wF)} – ${fmt(wT)}</div>
+          </div>
+          ${!act?statusBadge(s.date,false):''}
+        </div>
+        ${actSec}
+      </div>`;
+    }).join('');
+  } else if(detView==='screening'){
+    const scr=p.scrChecklist||{};
+    const done=SCR_ITEMS.filter(it=>scr[it.key]).length;
+    const pct=Math.round(done/SCR_ITEMS.length*100);
+    content=`<div class="scr-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:13px;font-weight:500;">Checklist screening</span>
+        <span class="badge badge-${done===SCR_ITEMS.length?'green':'yellow'}">${done}/${SCR_ITEMS.length}</span>
+      </div>
+      <div class="scr-progress-bar"><div class="scr-progress-fill" style="width:${pct}%"></div></div>
+      <p style="font-size:11px;color:var(--text3);">Tutti gli esami vanno completati entro 28gg prima di C1D1 (${fmt(addDays(p.c1d1,-28))} → ${fmt(addDays(p.c1d1,-1))})</p>
+    </div>
+    ${SCR_ITEMS.map(it=>`<div class="scr-item" onclick="toggleScr(${i},'${it.key}',event)">
+      <div class="scr-check${scr[it.key]?' done':''}"><i class="ti ti-check scr-check-icon"></i></div>
+      <span class="scr-label${scr[it.key]?' done':''}">${it.label}</span>
+    </div>`).join('')}`;
+  }
+
+  // Action buttons
+  const actBtns=`<div class="detail-actions">
+    ${p.study==='DS6000'?`<button class="btn-icon${detView==='screening'?' active':''}" onclick="setDetView('screening',event)"><i class="ti ti-clipboard-check"></i></button>`:''}
+    <button class="btn-icon${detView==='visits'?' active':''}" onclick="setDetView('visits',event)"><i class="ti ti-pill"></i></button>
+    <button class="btn-icon${detView==='scans'?' active':''}" onclick="setDetView('scans',event)"><i class="ti ti-scan"></i></button>
+    <button class="btn-icon" onclick="exportICS(${i},event)" title="Esporta .ics"><i class="ti ti-calendar-down"></i></button>
+    <button class="btn-icon danger" onclick="delPt(${i},event)"><i class="ti ti-trash"></i></button>
+  </div>`;
+
+  return `<div class="detail" onclick="event.stopPropagation()">
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${p.id} <span style="font-size:13px;font-weight:400;color:var(--text2);">· ${p.study==='MK2870'?'MK-2870-036':'DS6000-109'}</span></div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px;">${partLabel(p)}</div>
+      </div>
+      ${actBtns}
+    </div>
+    ${statsHtml}
+    ${tabsHtml}
+    <div class="detail-body">${content}</div>
+  </div>`;
+}
+
+function setDetView(v,e){ if(e)e.stopPropagation(); detView=v; editV=null; render(); }
+
+function saveVDate(pi,key,newDate,e){
+  if(e)e.stopPropagation();
+  if(!newDate||!newDate.match(/^\d{4}-\d{2}-\d{2}$/))return;
+  const p=patients[pi];
+  const {visits}=getSchedule(p);
+  const v=visits.find(x=>x.key===key);
+  if(!v)return;
+  if(!p.overrides)p.overrides={};
+  const sh=diff(v.date,newDate);
+  if(confirm(`Ricalcolare a cascata le visite successive (+${sh} giorni)?`)){
+    visits.filter(x=>x.date>=v.date).forEach(x=>{p.overrides[x.key]=addDays(p.overrides[x.key]||x.date,sh);});
+  } else { p.overrides[key]=newDate; }
+  editV=null; save(patients); render();
+}
+
+function saveCTA(pi,key,val,e){
+  if(e)e.stopPropagation();
+  if(!patients[pi].ctActual)patients[pi].ctActual={};
+  if(val)patients[pi].ctActual[key]=val; else delete patients[pi].ctActual[key];
+  save(patients); render();
+}
+
+function toggleScr(pi,key,e){
+  if(e)e.stopPropagation();
+  if(!patients[pi].scrChecklist)patients[pi].scrChecklist={};
+  patients[pi].scrChecklist[key]=!patients[pi].scrChecklist[key];
+  save(patients); render();
+}
+
+function delPt(i,e){
+  if(e)e.stopPropagation();
+  if(!confirm('Eliminare questa paziente?'))return;
+  patients.splice(i,1); selPt=null; save(patients); render();
+}
+
+// ===================== ICS EXPORT =====================
+function toICS(ds){return ds.replace(/-/g,'');}
+function buildICS(p){
+  const {visits,ctScans,echoVisits=[]}=getSchedule(p);
+  const act=p.ctActual||{};
+  let lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//TrialTracker//IT','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+  let idx=Date.now();
+  visits.forEach(v=>{
+    lines.push('BEGIN:VEVENT',`UID:${idx++}@tt`,`DTSTART;VALUE=DATE:${toICS(v.date)}`,`DTEND;VALUE=DATE:${toICS(addDays(v.date,1))}`,
+      `SUMMARY:${p.id} – ${v.key} (${v.drugs.join(', ')})`,`DESCRIPTION:${p.study}\\nPaziente: ${p.id}\\nFinestra: ±${v.window}gg`,'END:VEVENT');
+  });
+  [...ctScans,...echoVisits].forEach(s=>{
+    const ud=act[s.key]||s.date;
+    lines.push('BEGIN:VEVENT',`UID:${idx++}@tt`,`DTSTART;VALUE=DATE:${toICS(ud)}`,`DTEND;VALUE=DATE:${toICS(addDays(ud,1))}`,
+      `SUMMARY:${p.id} – ${s.label}${act[s.key]?' (reale)':' (prevista)'}`,`DESCRIPTION:${p.study}\\nPrevista: ${fmt(s.date)}\\nFinestra: ±${s.window}gg`,'END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+function exportICS(pi,e){
+  if(e)e.stopPropagation();
+  const p=patients[pi];
+  const blob=new Blob([buildICS(p)],{type:'text/calendar;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`${p.study}_${p.id}.ics`;a.click();URL.revokeObjectURL(url);
+  toast('File .ics scaricato!');
+}
+
+// ===================== MODAL =====================
+function showStudySelector(){ document.getElementById('study-selector').className='study-selector open'; }
+function hideStudySelector(){ document.getElementById('study-selector').className='study-selector'; }
+
+function openModal(study){
+  hideStudySelector();
+  modalStudy=study;
+  document.getElementById('modal-title').textContent=`Nuova paziente – ${study==='MK2870'?'MK-2870-036':'DS6000-109'}`;
+  const partSel=document.getElementById('new-part');
+  const rowBeva=document.getElementById('row-beva');
+  const rowSub=document.getElementById('row-sub');
+  if(study==='MK2870'){
+    partSel.innerHTML=`<option value="part1">Part 1 – Safety Run-in</option><option value="part2_induction">Part 2 – Induction</option><option value="part2_arm_a">Part 2 – Arm A (Maintenance)</option><option value="part2_arm_b">Part 2 – Arm B (Maintenance)</option>`;
+    rowBeva.style.display=''; rowSub.style.display='none';
+  } else {
+    partSel.innerHTML=`<option value="experimental">Braccio sperimentale (R-DXd)</option><option value="comparator">Braccio comparatore (ICC)</option>`;
+    rowBeva.style.display='none';
+    onPartChange();
+  }
+  document.getElementById('add-modal').className='modal-overlay open';
+}
+function hideModal(){ document.getElementById('add-modal').className='modal-overlay'; }
+function onPartChange(){
+  const part=document.getElementById('new-part').value;
+  const rowSub=document.getElementById('row-sub');
+  if(modalStudy==='DS6000'&&part==='comparator'){
+    rowSub.style.display='';
+    document.getElementById('new-sub').innerHTML=`<option value="paclitaxel">Paclitaxel (Q4W: D1, D8, D15, D22)</option><option value="topotecan">Topotecan (Q4W: D1, D8, D15)</option><option value="pld">PLD (Q4W: D1)</option>`;
+  } else { rowSub.style.display='none'; }
+}
+function addPatient(){
+  const id=document.getElementById('new-id').value.trim();
+  const c1d1=document.getElementById('new-c1d1').value;
+  const part=document.getElementById('new-part').value;
+  const sub=document.getElementById('new-sub')?.value||null;
+  const beva=document.getElementById('new-beva').value;
+  if(!id||!c1d1){alert('Inserisci codice paziente e data C1D1');return;}
+  patients.push({id,study:modalStudy,part,sub:(modalStudy==='DS6000'&&part==='comparator')?sub:null,beva,c1d1,overrides:{},ctActual:{},scrChecklist:{}});
+  save(patients); hideModal();
+  document.getElementById('new-id').value=''; document.getElementById('new-c1d1').value='';
+  render(); toast(`Paziente ${id} aggiunta!`);
+}
+
+// ===================== TOAST =====================
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2600);
+}
+
+// ===================== PWA =====================
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(()=>console.log('SW registered'))
+      .catch(e=>console.log('SW error',e));
+  });
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
